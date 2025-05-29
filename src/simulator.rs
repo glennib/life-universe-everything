@@ -90,6 +90,7 @@ pub struct Parameters {
 	pub max_age: Age,
 	pub males_per_100_females: u8,
 	pub target_total_fertility_rate: f64,
+	pub infant_mortality_rate: f64,
 }
 
 impl Parameters {
@@ -226,13 +227,18 @@ impl PopulationSimulator {
 	}
 
 	fn handle_deaths(&mut self) {
-		fn death_probability_one_year(age: Age, gender: Gender, max_age: Age) -> f64 {
+		fn death_probability_one_year(
+			age: Age,
+			gender: Gender,
+			max_age: Age,
+			infant_mortality_rate: f64,
+		) -> f64 {
 			if age >= max_age {
 				return 1.0;
 			}
 			match gender {
 				Gender::Male => match age.0 {
-					0 => 0.00544,
+					0 => infant_mortality_rate,
 					1 => 0.00039,
 					2..=4 => 0.00020,
 					5..=9 => 0.00013,
@@ -257,7 +263,7 @@ impl PopulationSimulator {
 					100.. => 0.43622,
 				},
 				Gender::Female => match age.0 {
-					0 => 0.00450,
+					0 => infant_mortality_rate,
 					1 => 0.00030,
 					2..=4 => 0.00015,
 					5..=9 => 0.00010,
@@ -285,7 +291,12 @@ impl PopulationSimulator {
 		}
 
 		for ((age, gender), count) in self.map.0.iter_mut() {
-			let probability = death_probability_one_year(*age, *gender, self.parameters.max_age);
+			let probability = death_probability_one_year(
+				*age,
+				*gender,
+				self.parameters.max_age,
+				self.parameters.infant_mortality_rate,
+			);
 			let deaths = (*count as f64 * probability).round();
 			*count -= deaths as Count;
 		}

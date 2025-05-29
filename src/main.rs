@@ -36,6 +36,7 @@ impl Default for MyApp {
 			max_age: Age(120),
 			males_per_100_females: 105,
 			target_total_fertility_rate: 2.06406,
+			infant_mortality_rate: 0.005,
 		};
 		Self {
 			// let sr = run(10_000_000_000, Year(2_000), 1_000, Age(120), 105, 2.06406);
@@ -64,6 +65,10 @@ impl eframe::App for MyApp {
 			ui.add(
 				egui::Slider::new(&mut self.parameters.males_per_100_females, 80..=120)
 					.text("males per 100 females"),
+			);
+			ui.add(
+				egui::Slider::new(&mut self.parameters.infant_mortality_rate, 0.001..=0.010)
+					.text("infant mortality rate"),
 			);
 			ui.horizontal(|ui| {
 				ui.add(
@@ -95,7 +100,8 @@ impl eframe::App for MyApp {
 						integrated = integrated.clamp(-1.0, 1.0);
 						let p = loss * 0.000000000002;
 						self.parameters.target_total_fertility_rate =
-							(self.target_total_fertility_rate_default + p + integrated).clamp(0.0, 3.0);
+							(self.target_total_fertility_rate_default + p + integrated)
+								.clamp(0.0, 3.0);
 						println!(
 							"tfr = {:.4} = {:.4} + (p: {:.4}) + (i: {:.4})",
 							self.parameters.target_total_fertility_rate,
