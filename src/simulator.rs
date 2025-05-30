@@ -81,6 +81,7 @@ pub struct SimulationResult {
 	pub initial_population: AgeGenderMap,
 	pub final_population: AgeGenderMap,
 	pub cohort_fertility: CohortFertility,
+	pub timeline: BTreeMap<Year, Count>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -98,12 +99,15 @@ impl Parameters {
 		let initial_year = Year(0);
 		let mut population = PopulationSimulator::new(self);
 		let initial_population = population.map.clone();
+		let mut timeline = BTreeMap::new();
+		timeline.insert(initial_year, population.map.count());
 
 		for year in 0..self.n_years {
 			let year = Year(initial_year.0 + i32::from(year));
 			population.propagate_age();
 			population.handle_births(year);
 			population.handle_deaths();
+			timeline.insert(Year(year.0 + 1), population.map.count());
 		}
 
 		let final_population = population.map;
@@ -117,6 +121,7 @@ impl Parameters {
 			initial_population,
 			final_population,
 			cohort_fertility,
+			timeline,
 		}
 	}
 }
