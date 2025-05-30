@@ -5,8 +5,10 @@ use crate::simulator::SimulationResult;
 use eframe::Frame;
 use eframe::egui;
 use eframe::egui::Context;
+use crate::optimizer::solve;
 
 mod simulator;
+mod optimizer;
 
 fn main() {
 	let native_options = eframe::NativeOptions {
@@ -32,7 +34,7 @@ impl Default for MyApp {
 	fn default() -> Self {
 		let parameters = Parameters {
 			initial_population: 10_000_000_000,
-			n_years: 1_000,
+			n_years: 2_000,
 			max_age: Age(120),
 			males_per_100_females: 105,
 			target_total_fertility_rate: 2.06406,
@@ -61,7 +63,7 @@ impl eframe::App for MyApp {
 					10.0_f64.powf(initial_population_exp).round() as Count;
 				ui.label(format!("{}", self.parameters.initial_population));
 			});
-			ui.add(egui::Slider::new(&mut self.parameters.n_years, 300..=2000).text("years"));
+			ui.add(egui::Slider::new(&mut self.parameters.n_years, 1000..=10_000).text("years"));
 			ui.add(
 				egui::Slider::new(&mut self.parameters.males_per_100_females, 80..=120)
 					.text("males per 100 females"),
@@ -75,42 +77,9 @@ impl eframe::App for MyApp {
 					egui::Slider::new(&mut self.parameters.target_total_fertility_rate, 0.0..=3.0)
 						.text("target fertility rate"),
 				);
-				if ui.button("stable?").clicked() {
-					let mut integrated = 0.0;
-					let mut loops: usize = 0;
-					loop {
-						if loops > 1_000 {
-							println!("failed to converge");
-							break;
-						}
-						let SimulationResult {
-							initial_population,
-							final_population,
-							..
-						} = self.parameters.run();
-						let loss =
-							initial_population.count() as i64 - final_population.count() as i64;
-						println!("loss: {loss}");
-						if loss.abs() < 10_000 {
-							println!("converged!");
-							break;
-						}
-						let loss = loss as f64;
-						integrated += loss * 0.000000000001;
-						integrated = integrated.clamp(-1.0, 1.0);
-						let p = loss * 0.000000000002;
-						self.parameters.target_total_fertility_rate =
-							(self.target_total_fertility_rate_default + p + integrated)
-								.clamp(0.0, 3.0);
-						println!(
-							"tfr = {:.4} = {:.4} + (p: {:.4}) + (i: {:.4})",
-							self.parameters.target_total_fertility_rate,
-							self.target_total_fertility_rate_default,
-							p,
-							integrated,
-						);
-						loops += 1;
-					}
+				if ui.button("stabilize").clicked() {
+					let parameters = solve(self.parameters);
+					self.parameters = parameters;
 				}
 			});
 		});
