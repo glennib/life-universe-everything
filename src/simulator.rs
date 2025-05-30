@@ -1,21 +1,20 @@
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 
-macro_rules! newtype {
-	($name:ident($inner:ty)) => {
-		#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
-		pub struct $name(pub $inner);
-
-		impl std::fmt::Display for $name {
-			fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-				std::fmt::Display::fmt(&self.0, f)
-			}
-		}
-	};
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct Year(pub i32);
+impl std::fmt::Display for Year {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		std::fmt::Display::fmt(&self.0, f)
+	}
 }
-
-newtype!(Year(i32));
-newtype!(Age(u8));
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct Age(pub u8);
+impl std::fmt::Display for Age {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		std::fmt::Display::fmt(&self.0, f)
+	}
+}
 
 #[derive(Debug, Clone)]
 pub struct AgeGenderMap(pub HashMap<(Age, Gender), Count>);
