@@ -95,7 +95,7 @@ impl eframe::App for MyApp {
 								ui.add(
 									egui::Slider::new(
 										&mut self.parameters.infant_mortality_rate,
-										0.001..=0.010,
+										0.001..=0.020,
 									)
 									.text("infant mortality rate"),
 								);
