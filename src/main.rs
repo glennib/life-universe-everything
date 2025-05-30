@@ -7,6 +7,7 @@ use eframe::Frame;
 use eframe::egui;
 use eframe::egui::Color32;
 use eframe::egui::Context;
+use eframe::egui::Grid;
 use egui_plot::Bar;
 use egui_plot::BarChart;
 use egui_plot::Plot;
@@ -32,6 +33,7 @@ fn main() {
 
 struct MyApp {
 	parameters: Parameters,
+	out_file: String,
 }
 
 impl Default for MyApp {
@@ -44,9 +46,11 @@ impl Default for MyApp {
 			target_total_fertility_rate: 2.06406,
 			infant_mortality_rate: 0.005,
 		};
+		let parameters = solve(parameters);
 		Self {
 			// let sr = run(10_000_000_000, Year(2_000), 1_000, Age(120), 105, 2.06406);
 			parameters,
+			out_file: String::from("data.json5"),
 		}
 	}
 }
@@ -55,63 +59,84 @@ impl eframe::App for MyApp {
 	fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
 		let sr = egui::TopBottomPanel::top("top")
 			.show(ctx, |ui| {
-				ui.group(|ui| {
-					ui.heading("Life, the Universe and Everything");
-					ui.horizontal(|ui| {
-						let mut initial_population_exp =
-							(self.parameters.initial_population as f64).log10();
-						ui.add(
-							egui::Slider::new(&mut initial_population_exp, 3.0..=14.0)
-								.text("initial population (exp10)"),
-						);
-						self.parameters.initial_population =
-							10.0_f64.powf(initial_population_exp).round() as Count;
-						ui.label(format!("{}", self.parameters.initial_population));
-					});
-					ui.add(
-						egui::Slider::new(&mut self.parameters.n_years, 1000..=10_000)
-							.text("years"),
-					);
-					ui.add(
-						egui::Slider::new(&mut self.parameters.males_per_100_females, 80..=120)
-							.text("males per 100 females"),
-					);
-					ui.add(
-						egui::Slider::new(
-							&mut self.parameters.infant_mortality_rate,
-							0.001..=0.010,
-						)
-						.text("infant mortality rate"),
-					);
-					ui.horizontal(|ui| {
-						ui.add(
-							egui::Slider::new(
-								&mut self.parameters.target_total_fertility_rate,
-								0.0..=3.0,
-							)
-							.text("target fertility rate"),
-						);
-						if ui.button("stabilize").clicked() {
-							let parameters = solve(self.parameters);
-							self.parameters = parameters;
-						}
-					});
-				});
+				ui.heading("Life, the Universe and Everything");
+				ui.horizontal(|ui| {
+					ui.group(|ui| {
+						Grid::new("grid_settings")
+							.num_columns(2)
+							.striped(true)
+							.show(ui, |ui| {
+								let mut initial_population_exp =
+									(self.parameters.initial_population as f64).log10();
+								ui.add(
+									egui::Slider::new(&mut initial_population_exp, 3.0..=14.0)
+										.text("initial population (exp10)"),
+								);
+								self.parameters.initial_population =
+									10.0_f64.powf(initial_population_exp).round() as Count;
+								ui.label(format!("{}", self.parameters.initial_population));
+								ui.end_row();
 
-				let sr = self.parameters.run();
+								ui.add(
+									egui::Slider::new(&mut self.parameters.n_years, 1000..=10_000)
+										.text("years"),
+								);
+								ui.end_row();
 
-				ui.group(|ui| {
-					ui.label(format!(
-						"Initial population: {}",
-						sr.initial_population.count()
-					));
-					ui.label(format!("Final population: {}", sr.final_population.count()));
-					ui.label(format!(
-						"Actual fertility: {:.3}",
-						sr.cohort_fertility.avg()
-					))
-				});
-				sr
+								ui.add(
+									egui::Slider::new(
+										&mut self.parameters.males_per_100_females,
+										80..=120,
+									)
+									.text("males per 100 females"),
+								);
+								ui.end_row();
+
+								ui.add(
+									egui::Slider::new(
+										&mut self.parameters.infant_mortality_rate,
+										0.001..=0.010,
+									)
+									.text("infant mortality rate"),
+								);
+								ui.end_row();
+
+								ui.add(
+									egui::Slider::new(
+										&mut self.parameters.target_total_fertility_rate,
+										0.0..=3.0,
+									)
+									.text("target fertility rate"),
+								);
+								if ui.button("stabilize").clicked() {
+									let parameters = solve(self.parameters);
+									self.parameters = parameters;
+								}
+								ui.end_row();
+							});
+					});
+
+					let sr = self.parameters.run();
+
+					ui.group(|ui| {
+						Grid::new("grid_summaries")
+							.num_columns(2)
+							.striped(true)
+							.show(ui, |ui| {
+								ui.label("Initial population");
+								ui.label(format!("{}", sr.initial_population.count()));
+								ui.end_row();
+								ui.label("Final population");
+								ui.label(format!("{}", sr.final_population.count()));
+								ui.end_row();
+								ui.label("Actual fertility");
+								ui.label(format!("{:.3}", sr.cohort_fertility.avg()));
+								ui.end_row();
+							});
+					});
+					sr
+				})
+				.inner
 			})
 			.inner;
 
@@ -125,8 +150,8 @@ impl eframe::App for MyApp {
 						let bars = sr
 							.final_population
 							.0
-							.into_iter()
-							.fold(BTreeMap::new(), |mut acc, ((age, gender), count)| {
+							.iter()
+							.fold(BTreeMap::new(), |mut acc, ((age, gender), &count)| {
 								let c: &mut (f64, f64) = acc.entry(age).or_default();
 								match gender {
 									Gender::Male => c.0 += count as f64,
@@ -153,7 +178,7 @@ impl eframe::App for MyApp {
 					.show(ui, |ui| {
 						let bars = sr
 							.timeline
-							.into_iter()
+							.iter()
 							.flat_map(|(year, data)| {
 								[
 									Bar::new(year.0 as f64, data.males as f64).fill(Color32::GREEN),
@@ -165,6 +190,16 @@ impl eframe::App for MyApp {
 							.collect();
 						ui.bar_chart(BarChart::new("bc2", bars));
 					});
+			});
+			ui.group(|ui| {
+				ui.horizontal(|ui| {
+					ui.text_edit_singleline(&mut self.out_file);
+					if ui.button("Save").clicked() {
+						let s = json5::to_string(&sr).unwrap();
+						std::fs::write(&self.out_file, &s).unwrap();
+						println!("Stored {} bytes to {}", s.len(), self.out_file);
+					}
+				});
 			});
 		});
 	}

@@ -1,14 +1,17 @@
+use serde::Serialize;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize)]
+#[serde(transparent)]
 pub struct Year(pub i32);
 impl std::fmt::Display for Year {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		std::fmt::Display::fmt(&self.0, f)
 	}
 }
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize)]
+#[serde(transparent)]
 pub struct Age(pub u8);
 impl std::fmt::Display for Age {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -16,9 +19,11 @@ impl std::fmt::Display for Age {
 	}
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
+#[serde(transparent)]
 pub struct AgeGenderMap(pub HashMap<(Age, Gender), Count>);
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(transparent)]
 pub struct CohortFertility(pub BTreeMap<Year, CohortData>);
 
 impl CohortFertility {
@@ -29,7 +34,7 @@ impl CohortFertility {
 	}
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, Serialize)]
 pub struct CohortData {
 	pub females: Count,
 	pub births: Count,
@@ -70,12 +75,13 @@ impl AgeGenderMap {
 
 pub type Count = u64;
 
-#[derive(Ord, PartialOrd, PartialEq, Eq, Copy, Clone, Debug, Hash)]
+#[derive(Ord, PartialOrd, PartialEq, Eq, Copy, Clone, Debug, Hash, Serialize)]
 pub enum Gender {
 	Male,
 	Female,
 }
 
+#[derive(Serialize)]
 pub struct SimulationResult {
 	pub initial_population: AgeGenderMap,
 	pub final_population: AgeGenderMap,
@@ -83,7 +89,7 @@ pub struct SimulationResult {
 	pub timeline: BTreeMap<Year, TimelineData>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize)]
 pub struct TimelineData {
 	pub males: Count,
 	pub females: Count,
