@@ -16,11 +16,11 @@ impl CostFunction for Parameters {
 		p.target_total_fertility_rate = param.clamp(0.0, 3.0);
 		let SimulationResult { timeline, .. } = p.run();
 		let first_year = timeline.first_key_value().unwrap().0;
-		let (end_year, &end_count) = timeline.last_key_value().unwrap();
+		let (end_year, &end_data) = timeline.last_key_value().unwrap();
 		let halfway_year = Year((end_year.0 - first_year.0) / 2);
-		let halfway_count = timeline[&halfway_year];
+		let halfway_data = timeline[&halfway_year];
 		let years = end_year.0 - halfway_year.0;
-		let difference = end_count - halfway_count;
+		let difference = end_data.sum() - halfway_data.sum();
 		let slope = difference as f64 / years as f64;
 		Ok(slope.abs())
 	}

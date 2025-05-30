@@ -116,35 +116,55 @@ impl eframe::App for MyApp {
 			.inner;
 
 		egui::CentralPanel::default().show(ctx, |ui| {
-			Plot::new("qwerty").height(300.0).show(ui, |ui| {
-				let bars = sr
-					.final_population
-					.0
-					.into_iter()
-					.fold(BTreeMap::new(), |mut acc, ((age, gender), count)| {
-						let c: &mut (f64, f64) = acc.entry(age).or_default();
-						match gender {
-							Gender::Male => c.0 += count as f64,
-							Gender::Female => c.1 += count as f64,
-						}
-						acc
-					})
-					.into_iter()
-					.flat_map(|(age, (m, f))| {
-						let male = Bar::new(age.0 as f64, m).fill(Color32::GREEN);
-						let female = Bar::new(age.0 as f64, f).base_offset(m).fill(Color32::RED);
-						[male, female]
-					})
-					.collect();
-				ui.bar_chart(BarChart::new("bc", bars));
+			ui.group(|ui| {
+				ui.heading("Final age distribution");
+				Plot::new("qwerty")
+					.show_grid([false, false])
+					.height(300.0)
+					.show(ui, |ui| {
+						let bars = sr
+							.final_population
+							.0
+							.into_iter()
+							.fold(BTreeMap::new(), |mut acc, ((age, gender), count)| {
+								let c: &mut (f64, f64) = acc.entry(age).or_default();
+								match gender {
+									Gender::Male => c.0 += count as f64,
+									Gender::Female => c.1 += count as f64,
+								}
+								acc
+							})
+							.into_iter()
+							.flat_map(|(age, (m, f))| {
+								let male = Bar::new(age.0 as f64, m).fill(Color32::GREEN);
+								let female =
+									Bar::new(age.0 as f64, f).base_offset(m).fill(Color32::RED);
+								[male, female]
+							})
+							.collect();
+						ui.bar_chart(BarChart::new("bc", bars).name("Age distribution"));
+					});
 			});
-			Plot::new("tl").height(200.0).show(ui, |ui| {
-				let bars = sr
-					.timeline
-					.into_iter()
-					.map(|(year, count)| Bar::new(year.0 as f64, count as f64))
-					.collect();
-				ui.bar_chart(BarChart::new("bc2", bars));
+			ui.group(|ui| {
+				ui.heading("Total population over time");
+				Plot::new("tl")
+					.show_grid([false, false])
+					.height(200.0)
+					.show(ui, |ui| {
+						let bars = sr
+							.timeline
+							.into_iter()
+							.flat_map(|(year, data)| {
+								[
+									Bar::new(year.0 as f64, data.males as f64).fill(Color32::GREEN),
+									Bar::new(year.0 as f64, data.females as f64)
+										.fill(Color32::RED)
+										.base_offset(data.males as f64),
+								]
+							})
+							.collect();
+						ui.bar_chart(BarChart::new("bc2", bars));
+					});
 			});
 		});
 	}
