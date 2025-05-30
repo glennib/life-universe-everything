@@ -17,7 +17,7 @@ impl CostFunction for Parameters {
 		let SimulationResult { timeline, .. } = p.run();
 		let first_year = timeline.first_key_value().unwrap().0;
 		let (end_year, &end_count) = timeline.last_key_value().unwrap();
-		let halfway_year = Year((end_year.0 - first_year.0)/2);
+		let halfway_year = Year((end_year.0 - first_year.0) / 2);
 		let halfway_count = timeline[&halfway_year];
 		let years = end_year.0 - halfway_year.0;
 		let difference = end_count - halfway_count;
@@ -27,7 +27,8 @@ impl CostFunction for Parameters {
 }
 
 pub fn solve(parameters: Parameters) -> Parameters {
-	let solver = NelderMead::new(vec![1.9, 2.1]);
+	let tfr = parameters.target_total_fertility_rate;
+	let solver = NelderMead::new(vec![tfr - 0.05, tfr + 0.05]);
 	let res = Executor::new(parameters, solver)
 		.configure(|state| state.max_iters(10_000))
 		.run()
