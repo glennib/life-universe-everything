@@ -6,13 +6,13 @@ use eframe::egui::Button;
 use eframe::egui::Color32;
 use eframe::egui::Context;
 use eframe::egui::Grid;
+use eframe::egui::SliderClamping;
 use egui_plot::Bar;
 use egui_plot::BarChart;
 use egui_plot::Plot;
 
 use crate::optimizer::solve;
 use crate::simulator::Age;
-use crate::simulator::Count;
 use crate::simulator::Gender;
 use crate::simulator::Parameters;
 use crate::simulator::SimulationResult;
@@ -74,19 +74,28 @@ impl eframe::App for MyApp {
 					.num_columns(3)
 					.striped(true)
 					.show(ui, |ui| {
-						let mut initial_population_exp =
-							(self.parameters.initial_population as f64).log10();
-						ui.add(egui::Slider::new(&mut initial_population_exp, 3.0..=14.0));
-						ui.label("initial population (10^x)");
-						self.parameters.initial_population =
-							10.0_f64.powf(initial_population_exp).round() as Count;
-						ui.label(format!("{}", self.parameters.initial_population));
+						ui.add(
+							egui::Slider::new(
+								&mut self.parameters.initial_population,
+								10_u64.pow(3)..=10_u64.pow(13),
+							)
+							.logarithmic(true),
+						);
+						ui.label("initial population");
 						ui.end_row();
-
-						ui.add(egui::Slider::new(
-							&mut self.parameters.n_years,
-							1000..=10_000,
-						));
+						ui.horizontal(|ui| {
+							ui.add(
+								egui::Slider::new(&mut self.parameters.n_years, 0..=10_000)
+									.integer()
+									.clamping(SliderClamping::Edits),
+							);
+							if ui.button("-").clicked() {
+								self.parameters.n_years -= 1;
+							}
+							if ui.button("+").clicked() {
+								self.parameters.n_years += 1;
+							}
+						});
 						ui.label("years");
 						ui.end_row();
 
@@ -148,7 +157,7 @@ impl eframe::App for MyApp {
 		egui::CentralPanel::default().show(ctx, |ui| {
 			ui.group(|ui| {
 				ui.heading("Final age distribution");
-				Plot::new("qwerty")
+				Plot::new("final_age_distribution")
 					.show_grid([false, false])
 					.height(300.0)
 					.show(ui, |ui| {
@@ -168,8 +177,8 @@ impl eframe::App for MyApp {
 							.into_iter()
 							.flat_map(|(age, (m, f))| {
 								let male = Bar::new(age.0 as f64, m).fill(Color32::GREEN);
-								let female =
-									Bar::new(age.0 as f64, f).base_offset(m).fill(Color32::RED);
+								let female = Bar::new(age.0 as f64 + 0.25, f) /*.base_offset(m)*/
+									.fill(Color32::RED);
 								[male, female]
 							})
 							.collect();
