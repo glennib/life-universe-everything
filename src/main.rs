@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use eframe::Frame;
 use eframe::egui;
 use eframe::egui::Button;
@@ -13,7 +11,6 @@ use egui_plot::Plot;
 
 use crate::optimizer::solve;
 use crate::simulator::Age;
-use crate::simulator::Gender;
 use crate::simulator::Parameters;
 use crate::simulator::SimulationResult;
 
@@ -161,24 +158,22 @@ impl eframe::App for MyApp {
 					.show_grid([false, false])
 					.height(300.0)
 					.show(ui, |ui| {
-						let bars = self
-							.solution
-							.final_population
-							.0
-							.iter()
-							.fold(BTreeMap::new(), |mut acc, ((age, gender), &count)| {
-								let c: &mut (f64, f64) = acc.entry(age).or_default();
-								match gender {
-									Gender::Male => c.0 += count as f64,
-									Gender::Female => c.1 += count as f64,
-								}
-								acc
-							})
-							.into_iter()
-							.flat_map(|(age, (m, f))| {
-								let male = Bar::new(age.0 as f64, m).fill(Color32::GREEN);
-								let female = Bar::new(age.0 as f64 + 0.25, f) /*.base_offset(m)*/
-									.fill(Color32::RED);
+						let fp = &self.solution.final_population;
+						let max_age = fp
+							.males
+							.keys()
+							.chain(fp.females.keys())
+							.copied()
+							.max()
+							.unwrap();
+						let bars = (0..=max_age.0)
+							.map(Age)
+							.flat_map(|age| {
+								let m = fp.males[&age] as f64;
+								let f = fp.females[&age] as f64;
+								let age = age.0 as f64;
+								let male = Bar::new(age, m).fill(Color32::GREEN);
+								let female = Bar::new(age + 0.25, f).fill(Color32::RED);
 								[male, female]
 							})
 							.collect();
@@ -194,13 +189,13 @@ impl eframe::App for MyApp {
 						let bars = self
 							.solution
 							.timeline
-							.iter()
-							.flat_map(|(year, data)| {
+							.iter_mf()
+							.flat_map(|(year, (m, f))| {
 								[
-									Bar::new(year.0 as f64, data.males as f64).fill(Color32::GREEN),
-									Bar::new(year.0 as f64, data.females as f64)
+									Bar::new(year.0 as f64, m as f64).fill(Color32::GREEN),
+									Bar::new(year.0 as f64, f as f64)
 										.fill(Color32::RED)
-										.base_offset(data.males as f64),
+										.base_offset(m as f64),
 								]
 							})
 							.collect();

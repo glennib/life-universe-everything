@@ -21,8 +21,39 @@ impl std::fmt::Display for Age {
 }
 
 #[derive(Debug, Clone, Serialize)]
-#[serde(transparent)]
-pub struct AgeGenderMap(pub HashMap<(Age, Gender), Count>);
+pub struct AgeGenderMap {
+	pub males: HashMap<Age, Count>,
+	pub females: HashMap<Age, Count>,
+}
+
+impl AgeGenderMap {
+	pub fn count(&self) -> Count {
+		self.males.values().sum::<Count>() + self.females.values().sum::<Count>()
+	}
+
+	#[allow(unused)]
+	pub fn count_gender(&self, gender: Gender) -> Count {
+		match gender {
+			Gender::Male => self.males.values().sum(),
+			Gender::Female => self.females.values().sum(),
+		}
+	}
+
+	#[allow(unused)]
+	pub fn count_age(&self, age: Age) -> Count {
+		self.males.get(&age).copied().unwrap_or_default()
+			+ self.females.get(&age).copied().unwrap_or_default()
+	}
+
+	#[allow(unused)]
+	pub fn count_age_gender(&self, age: Age, gender: Gender) -> Count {
+		match gender {
+			Gender::Male => self.males.get(&age).copied().unwrap_or_default(),
+			Gender::Female => self.females.get(&age).copied().unwrap_or_default(),
+		}
+	}
+}
+
 #[derive(Debug, Clone, Default, Serialize)]
 #[serde(transparent)]
 pub struct CohortFertility(pub BTreeMap<Year, CohortData>);
@@ -37,40 +68,15 @@ impl CohortFertility {
 
 #[derive(Debug, Clone, Copy, Default, Serialize)]
 pub struct CohortData {
+	#[serde(rename = "f")]
 	pub females: Count,
+	#[serde(rename = "b")]
 	pub births: Count,
 }
 
 impl CohortData {
 	pub fn ratio(self) -> f64 {
 		self.births as f64 / self.females as f64
-	}
-}
-
-impl AgeGenderMap {
-	pub fn count(&self) -> Count {
-		self.0.values().sum()
-	}
-
-	#[allow(unused)]
-	pub fn count_gender(&self, gender: Gender) -> Count {
-		self.0
-			.iter()
-			.filter_map(|(&(_, g), &count)| (g == gender).then_some(count))
-			.sum()
-	}
-
-	#[allow(unused)]
-	pub fn count_age(&self, age: Age) -> Count {
-		self.0
-			.iter()
-			.filter_map(|(&(a, _), &count)| (a == age).then_some(count))
-			.sum()
-	}
-
-	#[allow(unused)]
-	pub fn count_age_gender(&self, age: Age, gender: Gender) -> Count {
-		self.0[&(age, gender)]
 	}
 }
 
@@ -87,18 +93,42 @@ pub struct SimulationResult {
 	pub initial_population: AgeGenderMap,
 	pub final_population: AgeGenderMap,
 	pub cohort_fertility: CohortFertility,
-	pub timeline: BTreeMap<Year, TimelineData>,
+	pub timeline: Timeline,
 }
 
-#[derive(Debug, Clone, Copy, Serialize)]
-pub struct TimelineData {
-	pub males: Count,
-	pub females: Count,
+#[derive(Serialize, Default)]
+pub struct Timeline {
+	pub males: BTreeMap<Year, Count>,
+	pub females: BTreeMap<Year, Count>,
 }
 
-impl TimelineData {
-	pub fn sum(&self) -> Count {
-		self.males + self.females
+impl Timeline {
+	pub fn insert(&mut self, year: Year, males: Count, females: Count) {
+		self.males.insert(year, males);
+		self.females.insert(year, females);
+	}
+	pub fn sum(&self, year: Year) -> Count {
+		let (m, f) = self.get_mf(year);
+		m + f
+	}
+
+	pub fn year_range(&self) -> (Year, Year) {
+		let it = self.males.keys().chain(self.females.keys());
+		(*it.clone().min().unwrap(), *it.max().unwrap())
+	}
+
+	pub fn get_mf(&self, year: Year) -> (Count, Count) {
+		(
+			self.males.get(&year).copied().unwrap_or_default(),
+			self.females.get(&year).copied().unwrap_or_default(),
+		)
+	}
+
+	pub fn iter_mf(&self) -> impl Iterator<Item = (Year, (Count, Count))> {
+		let (year_from, year_to) = self.year_range();
+		(year_from.0..=year_to.0)
+			.map(Year)
+			.map(|year| (year, (self.males[&year], self.females[&year])))
 	}
 }
 
@@ -117,13 +147,11 @@ impl Parameters {
 		let initial_year = Year(0);
 		let mut population = PopulationSimulator::new(self);
 		let initial_population = population.map.clone();
-		let mut timeline = BTreeMap::new();
+		let mut timeline = Timeline::default();
 		timeline.insert(
 			initial_year,
-			TimelineData {
-				males: population.map.count_gender(Gender::Male),
-				females: population.map.count_gender(Gender::Female),
-			},
+			population.map.count_gender(Gender::Male),
+			population.map.count_gender(Gender::Female),
 		);
 
 		for year in 0..self.n_years {
@@ -133,10 +161,8 @@ impl Parameters {
 			population.handle_deaths();
 			timeline.insert(
 				Year(year.0 + 1),
-				TimelineData {
-					males: population.map.count_gender(Gender::Male),
-					females: population.map.count_gender(Gender::Female),
-				},
+				population.map.count_gender(Gender::Male),
+				population.map.count_gender(Gender::Female),
 			);
 		}
 
@@ -177,19 +203,19 @@ impl PopulationSimulator {
 				65.. => 0.09 / 56.0,    // ~0.16% per year
 			}
 		}
-		let map = (0..=(parameters.max_age.0 + 1))
-			.flat_map(|age| {
+		let map: HashMap<_, _> = (0..=(parameters.max_age.0 + 1))
+			.map(|age| {
 				let age = Age(age);
 				let rel_freq = age_relative_frequency(age, parameters.max_age);
-				let count_each =
+				let count_each_gender =
 					((rel_freq * (parameters.initial_population as f64)) * 0.5) as Count;
-				[
-					((age, Gender::Male), count_each),
-					((age, Gender::Female), count_each),
-				]
+				(age, count_each_gender)
 			})
 			.collect();
-		let map = AgeGenderMap(map);
+		let map = AgeGenderMap {
+			males: map.clone(),
+			females: map,
+		};
 		Self {
 			cohort_fertility: CohortFertility::default(),
 			map,
@@ -230,10 +256,9 @@ impl PopulationSimulator {
 
 		let newborns = self
 			.map
-			.0
+			.females
 			.iter()
-			.filter(|&(&(_age, gender), _females)| gender == Gender::Female)
-			.map(|(&(age, _gender), &females)| {
+			.map(|(&age, &females)| {
 				(
 					age,
 					(birth_probability_one_year(age.0, self.parameters.target_total_fertility_rate)
@@ -258,8 +283,8 @@ impl PopulationSimulator {
 		let females = newborns - males;
 		let cf = self.cohort_fertility.0.entry(year).or_default();
 		cf.females += females;
-		*self.map.0.get_mut(&(Age(0), Gender::Female)).unwrap() += females;
-		*self.map.0.get_mut(&(Age(0), Gender::Male)).unwrap() += males;
+		*self.map.females.get_mut(&Age(0)).unwrap() += females;
+		*self.map.males.get_mut(&Age(0)).unwrap() += males;
 	}
 
 	fn handle_deaths(&mut self) {
@@ -326,10 +351,21 @@ impl PopulationSimulator {
 			}
 		}
 
-		for ((age, gender), count) in self.map.0.iter_mut() {
+		for (age, count) in &mut self.map.males {
 			let probability = death_probability_one_year(
 				*age,
-				*gender,
+				Gender::Male,
+				self.parameters.max_age,
+				self.parameters.infant_mortality_rate,
+			);
+			let deaths = (*count as f64 * probability).round();
+			*count -= deaths as Count;
+		}
+
+		for (age, count) in &mut self.map.females {
+			let probability = death_probability_one_year(
+				*age,
+				Gender::Female,
 				self.parameters.max_age,
 				self.parameters.infant_mortality_rate,
 			);
@@ -340,15 +376,15 @@ impl PopulationSimulator {
 
 	fn propagate_age(&mut self) {
 		for age in (0..=self.parameters.max_age.0).rev() {
-			let [old_male, old_female, young_male, young_female] = self
+			let [old_male, young_male] = self
 				.map
-				.0
-				.get_disjoint_mut([
-					&(Age(age + 1), Gender::Male),
-					&(Age(age + 1), Gender::Female),
-					&(Age(age), Gender::Male),
-					&(Age(age), Gender::Female),
-				])
+				.males
+				.get_disjoint_mut([&Age(age + 1), &Age(age)])
+				.map(Option::unwrap);
+			let [old_female, young_female] = self
+				.map
+				.females
+				.get_disjoint_mut([&Age(age + 1), &Age(age)])
 				.map(Option::unwrap);
 			*old_male = *young_male;
 			*young_male = 0;
