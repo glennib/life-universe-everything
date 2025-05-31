@@ -8,6 +8,7 @@ use eframe::egui;
 use eframe::egui::Color32;
 use eframe::egui::Context;
 use eframe::egui::Grid;
+use eframe::egui::Label;
 use egui_plot::Bar;
 use egui_plot::BarChart;
 use egui_plot::Plot;
@@ -60,83 +61,74 @@ impl eframe::App for MyApp {
 		let sr = egui::TopBottomPanel::top("top")
 			.show(ctx, |ui| {
 				ui.heading("Life, the Universe and Everything");
-				ui.horizontal(|ui| {
-					ui.group(|ui| {
-						Grid::new("grid_settings")
-							.num_columns(2)
-							.striped(true)
-							.show(ui, |ui| {
-								let mut initial_population_exp =
-									(self.parameters.initial_population as f64).log10();
-								ui.add(
-									egui::Slider::new(&mut initial_population_exp, 3.0..=14.0)
-										.text("initial population (exp10)"),
-								);
-								self.parameters.initial_population =
-									10.0_f64.powf(initial_population_exp).round() as Count;
-								ui.label(format!("{}", self.parameters.initial_population));
-								ui.end_row();
+				ui.group(|ui| {
+					Grid::new("grid_settings")
+						.num_columns(3)
+						.striped(true)
+						.show(ui, |ui| {
+							let mut initial_population_exp =
+								(self.parameters.initial_population as f64).log10();
+							ui.add(egui::Slider::new(&mut initial_population_exp, 3.0..=14.0));
+							ui.label("initial population (10^x)");
+							self.parameters.initial_population =
+								10.0_f64.powf(initial_population_exp).round() as Count;
+							ui.label(format!("{}", self.parameters.initial_population));
+							ui.end_row();
 
-								ui.add(
-									egui::Slider::new(&mut self.parameters.n_years, 1000..=10_000)
-										.text("years"),
-								);
-								ui.end_row();
+							ui.add(egui::Slider::new(
+								&mut self.parameters.n_years,
+								1000..=10_000,
+							));
+							ui.label("years");
+							ui.add_sized([ui.available_width(), 0.0], Label::new(""));
+							ui.end_row();
 
-								ui.add(
-									egui::Slider::new(
-										&mut self.parameters.males_per_100_females,
-										80..=120,
-									)
-									.text("males per 100 females"),
-								);
-								ui.end_row();
+							ui.add(egui::Slider::new(
+								&mut self.parameters.males_per_100_females,
+								80..=120,
+							));
+							ui.label("males per 100 females");
+							ui.end_row();
 
-								ui.add(
-									egui::Slider::new(
-										&mut self.parameters.infant_mortality_rate,
-										0.001..=0.020,
-									)
-									.text("infant mortality rate"),
-								);
-								ui.end_row();
+							ui.add(egui::Slider::new(
+								&mut self.parameters.infant_mortality_rate,
+								0.001..=0.020,
+							));
+							ui.label("infant mortality rate");
+							ui.end_row();
 
-								ui.add(
-									egui::Slider::new(
-										&mut self.parameters.target_total_fertility_rate,
-										0.0..=3.0,
-									)
-									.text("target fertility rate"),
-								);
-								if ui.button("stabilize").clicked() {
-									let parameters = solve(self.parameters);
-									self.parameters = parameters;
-								}
-								ui.end_row();
-							});
-					});
+							ui.add(egui::Slider::new(
+								&mut self.parameters.target_total_fertility_rate,
+								0.0..=3.0,
+							));
+							ui.label("target fertility rate");
+							if ui.button("stabilize").clicked() {
+								let parameters = solve(self.parameters);
+								self.parameters = parameters;
+							}
+							ui.end_row();
+						});
+				});
 
-					let sr = self.parameters.run();
+				let sr = self.parameters.run();
 
-					ui.group(|ui| {
-						Grid::new("grid_summaries")
-							.num_columns(2)
-							.striped(true)
-							.show(ui, |ui| {
-								ui.label("Initial population");
-								ui.label(format!("{}", sr.initial_population.count()));
-								ui.end_row();
-								ui.label("Final population");
-								ui.label(format!("{}", sr.final_population.count()));
-								ui.end_row();
-								ui.label("Actual fertility");
-								ui.label(format!("{:.3}", sr.cohort_fertility.avg()));
-								ui.end_row();
-							});
-					});
-					sr
-				})
-				.inner
+				ui.group(|ui| {
+					Grid::new("grid_summaries")
+						.num_columns(2)
+						.striped(true)
+						.show(ui, |ui| {
+							ui.label("Initial population");
+							ui.label(format!("{}", sr.initial_population.count()));
+							ui.end_row();
+							ui.label("Final population");
+							ui.label(format!("{}", sr.final_population.count()));
+							ui.end_row();
+							ui.label("Actual fertility");
+							ui.label(format!("{:.3}", sr.cohort_fertility.avg()));
+							ui.end_row();
+						});
+				});
+				sr
 			})
 			.inner;
 
