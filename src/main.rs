@@ -66,7 +66,7 @@ impl eframe::App for MyApp {
 			.show(ctx, |ui| {
 				ui.heading("Life, the Universe and Everything");
 				ui.group(|ui| {
-					Grid::new("grid_settings")
+					let grid = Grid::new("grid_settings")
 						.num_columns(3)
 						.striped(true)
 						.show(ui, |ui| {
@@ -112,7 +112,7 @@ impl eframe::App for MyApp {
 							ui.end_row();
 						});
 					if ui
-						.add(/*[ui.available_width(), 0.0],*/ Button::new("reset"))
+						.add_sized([grid.response.rect.width(), 0.0], Button::new("reset"))
 						.clicked()
 					{
 						self.parameters = self.original_parameters;
