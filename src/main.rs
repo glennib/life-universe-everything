@@ -2,10 +2,10 @@ use std::collections::BTreeMap;
 
 use eframe::Frame;
 use eframe::egui;
+use eframe::egui::Button;
 use eframe::egui::Color32;
 use eframe::egui::Context;
 use eframe::egui::Grid;
-use eframe::egui::Label;
 use egui_plot::Bar;
 use egui_plot::BarChart;
 use egui_plot::Plot;
@@ -36,6 +36,7 @@ fn main() {
 
 struct MyApp {
 	parameters: Parameters,
+	original_parameters: Parameters,
 	out_file: String,
 }
 
@@ -53,6 +54,7 @@ impl Default for MyApp {
 		Self {
 			// let sr = run(10_000_000_000, Year(2_000), 1_000, Age(120), 105, 2.06406);
 			parameters,
+			original_parameters: parameters,
 			out_file: String::from("data.json5"),
 		}
 	}
@@ -82,7 +84,6 @@ impl eframe::App for MyApp {
 								1000..=10_000,
 							));
 							ui.label("years");
-							ui.add_sized([ui.available_width(), 0.0], Label::new(""));
 							ui.end_row();
 
 							ui.add(egui::Slider::new(
@@ -110,6 +111,12 @@ impl eframe::App for MyApp {
 							}
 							ui.end_row();
 						});
+					if ui
+						.add(/*[ui.available_width(), 0.0],*/ Button::new("reset"))
+						.clicked()
+					{
+						self.parameters = self.original_parameters;
+					}
 				});
 
 				let sr = self.parameters.run();
