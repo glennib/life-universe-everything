@@ -1,11 +1,12 @@
-use crate::simulator::Parameters;
-use crate::simulator::SimulationResult;
-use crate::simulator::Year;
 use argmin::core::CostFunction;
 use argmin::core::Error;
 use argmin::core::Executor;
 use argmin::core::OptimizationResult;
 use argmin::solver::neldermead::NelderMead;
+
+use crate::simulator::Parameters;
+use crate::simulator::SimulationResult;
+use crate::simulator::Year;
 
 impl CostFunction for Parameters {
 	type Param = f64;

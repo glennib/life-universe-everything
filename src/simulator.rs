@@ -1,6 +1,7 @@
-use serde::Serialize;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
+
+use serde::Serialize;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize)]
 #[serde(transparent)]

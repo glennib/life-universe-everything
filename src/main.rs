@@ -1,8 +1,5 @@
-use crate::optimizer::solve;
-use crate::simulator::Age;
-use crate::simulator::Count;
-use crate::simulator::Gender;
-use crate::simulator::Parameters;
+use std::collections::BTreeMap;
+
 use eframe::Frame;
 use eframe::egui;
 use eframe::egui::Color32;
@@ -12,7 +9,12 @@ use eframe::egui::Label;
 use egui_plot::Bar;
 use egui_plot::BarChart;
 use egui_plot::Plot;
-use std::collections::BTreeMap;
+
+use crate::optimizer::solve;
+use crate::simulator::Age;
+use crate::simulator::Count;
+use crate::simulator::Gender;
+use crate::simulator::Parameters;
 
 mod optimizer;
 mod simulator;
