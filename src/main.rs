@@ -15,6 +15,7 @@ use crate::simulator::Age;
 use crate::simulator::Count;
 use crate::simulator::Gender;
 use crate::simulator::Parameters;
+use crate::simulator::SimulationResult;
 
 mod optimizer;
 mod simulator;
@@ -36,6 +37,7 @@ fn main() {
 
 struct MyApp {
 	parameters: Parameters,
+	solution: SimulationResult,
 	original_parameters: Parameters,
 	out_file: String,
 }
@@ -51,9 +53,11 @@ impl Default for MyApp {
 			infant_mortality_rate: 0.005,
 		};
 		let parameters = solve(parameters);
+		let solution = parameters.run();
 		Self {
 			// let sr = run(10_000_000_000, Year(2_000), 1_000, Age(120), 105, 2.06406);
 			parameters,
+			solution,
 			original_parameters: parameters,
 			out_file: String::from("data.json5"),
 		}
@@ -62,84 +66,84 @@ impl Default for MyApp {
 
 impl eframe::App for MyApp {
 	fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
-		let sr = egui::TopBottomPanel::top("top")
-			.show(ctx, |ui| {
-				ui.heading("Life, the Universe and Everything");
-				ui.group(|ui| {
-					let grid = Grid::new("grid_settings")
-						.num_columns(3)
-						.striped(true)
-						.show(ui, |ui| {
-							let mut initial_population_exp =
-								(self.parameters.initial_population as f64).log10();
-							ui.add(egui::Slider::new(&mut initial_population_exp, 3.0..=14.0));
-							ui.label("initial population (10^x)");
-							self.parameters.initial_population =
-								10.0_f64.powf(initial_population_exp).round() as Count;
-							ui.label(format!("{}", self.parameters.initial_population));
-							ui.end_row();
+		let prev_params = self.parameters;
+		egui::TopBottomPanel::top("top").show(ctx, |ui| {
+			ui.heading("Life, the Universe and Everything");
+			ui.group(|ui| {
+				let grid = Grid::new("grid_settings")
+					.num_columns(3)
+					.striped(true)
+					.show(ui, |ui| {
+						let mut initial_population_exp =
+							(self.parameters.initial_population as f64).log10();
+						ui.add(egui::Slider::new(&mut initial_population_exp, 3.0..=14.0));
+						ui.label("initial population (10^x)");
+						self.parameters.initial_population =
+							10.0_f64.powf(initial_population_exp).round() as Count;
+						ui.label(format!("{}", self.parameters.initial_population));
+						ui.end_row();
 
-							ui.add(egui::Slider::new(
-								&mut self.parameters.n_years,
-								1000..=10_000,
-							));
-							ui.label("years");
-							ui.end_row();
+						ui.add(egui::Slider::new(
+							&mut self.parameters.n_years,
+							1000..=10_000,
+						));
+						ui.label("years");
+						ui.end_row();
 
-							ui.add(egui::Slider::new(
-								&mut self.parameters.males_per_100_females,
-								80..=120,
-							));
-							ui.label("males per 100 females");
-							ui.end_row();
+						ui.add(egui::Slider::new(
+							&mut self.parameters.males_per_100_females,
+							80..=120,
+						));
+						ui.label("males per 100 females");
+						ui.end_row();
 
-							ui.add(egui::Slider::new(
-								&mut self.parameters.infant_mortality_rate,
-								0.001..=0.020,
-							));
-							ui.label("infant mortality rate");
-							ui.end_row();
+						ui.add(egui::Slider::new(
+							&mut self.parameters.infant_mortality_rate,
+							0.001..=0.020,
+						));
+						ui.label("infant mortality rate");
+						ui.end_row();
 
-							ui.add(egui::Slider::new(
-								&mut self.parameters.target_total_fertility_rate,
-								0.0..=3.0,
-							));
-							ui.label("target fertility rate");
-							if ui.button("stabilize").clicked() {
-								let parameters = solve(self.parameters);
-								self.parameters = parameters;
-							}
-							ui.end_row();
-						});
-					if ui
-						.add_sized([grid.response.rect.width(), 0.0], Button::new("reset"))
-						.clicked()
-					{
-						self.parameters = self.original_parameters;
-					}
-				});
+						ui.add(egui::Slider::new(
+							&mut self.parameters.target_total_fertility_rate,
+							0.0..=3.0,
+						));
+						ui.label("target fertility rate");
+						if ui.button("stabilize").clicked() {
+							let parameters = solve(self.parameters);
+							self.parameters = parameters;
+						}
+						ui.end_row();
+					});
+				if ui
+					.add_sized([grid.response.rect.width(), 0.0], Button::new("reset"))
+					.clicked()
+				{
+					self.parameters = self.original_parameters;
+				}
+			});
 
-				let sr = self.parameters.run();
+			if prev_params != self.parameters {
+				self.solution = self.parameters.run();
+			}
 
-				ui.group(|ui| {
-					Grid::new("grid_summaries")
-						.num_columns(2)
-						.striped(true)
-						.show(ui, |ui| {
-							ui.label("Initial population");
-							ui.label(format!("{}", sr.initial_population.count()));
-							ui.end_row();
-							ui.label("Final population");
-							ui.label(format!("{}", sr.final_population.count()));
-							ui.end_row();
-							ui.label("Actual fertility");
-							ui.label(format!("{:.3}", sr.cohort_fertility.avg()));
-							ui.end_row();
-						});
-				});
-				sr
-			})
-			.inner;
+			ui.group(|ui| {
+				Grid::new("grid_summaries")
+					.num_columns(2)
+					.striped(true)
+					.show(ui, |ui| {
+						ui.label("Initial population");
+						ui.label(format!("{}", self.solution.initial_population.count()));
+						ui.end_row();
+						ui.label("Final population");
+						ui.label(format!("{}", self.solution.final_population.count()));
+						ui.end_row();
+						ui.label("Actual fertility");
+						ui.label(format!("{:.3}", self.solution.cohort_fertility.avg()));
+						ui.end_row();
+					});
+			});
+		});
 
 		egui::CentralPanel::default().show(ctx, |ui| {
 			ui.group(|ui| {
@@ -148,7 +152,8 @@ impl eframe::App for MyApp {
 					.show_grid([false, false])
 					.height(300.0)
 					.show(ui, |ui| {
-						let bars = sr
+						let bars = self
+							.solution
 							.final_population
 							.0
 							.iter()
@@ -177,7 +182,8 @@ impl eframe::App for MyApp {
 					.show_grid([false, false])
 					.height(200.0)
 					.show(ui, |ui| {
-						let bars = sr
+						let bars = self
+							.solution
 							.timeline
 							.iter()
 							.flat_map(|(year, data)| {
@@ -196,7 +202,7 @@ impl eframe::App for MyApp {
 				ui.horizontal(|ui| {
 					ui.text_edit_singleline(&mut self.out_file);
 					if ui.button("Save").clicked() {
-						let s = json5::to_string(&sr).unwrap();
+						let s = json5::to_string(&self.solution).unwrap();
 						std::fs::write(&self.out_file, &s).unwrap();
 						println!("Stored {} bytes to {}", s.len(), self.out_file);
 					}

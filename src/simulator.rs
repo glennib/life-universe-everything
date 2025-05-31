@@ -102,7 +102,7 @@ impl TimelineData {
 	}
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Parameters {
 	pub initial_population: Count,
 	pub n_years: u16,
