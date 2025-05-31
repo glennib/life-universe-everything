@@ -237,7 +237,8 @@ impl PopulationSimulator {
 				(
 					age,
 					(birth_probability_one_year(age.0, self.parameters.target_total_fertility_rate)
-						* (females as f64)) as Count,
+						* (females as f64))
+						.round() as Count,
 				)
 			})
 			.inspect(|&(age, births)| {
