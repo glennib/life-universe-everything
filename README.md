@@ -13,3 +13,9 @@ cargo run --release
 GUI is built with egui/[eframe](https://github.com/emilk/egui/tree/main/crates/eframe).
 Check out that link if you need help with GUI-specific system dependencies.
 This is probably only needed if you use Linux.
+
+Deploy to Github Pages:
+
+```shell
+trunk build --release --dist docs --public-url /life-universe-everything/
+```
