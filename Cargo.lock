@@ -199,6 +199,7 @@ checksum = "760a49d596b18b881d2fe6e9e6da4608fa64d4a7653ef5cd43bfaa4da018d596"
 dependencies = [
  "anyhow",
  "argmin-math",
+ "getrandom 0.2.16",
  "instant",
  "num-traits",
  "paste",
@@ -1213,8 +1214,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "335ff9f135e4384c8150d6f27c6daed433577f86b4750418338c01a1a2528592"
 dependencies = [
  "cfg-if",
+ "js-sys",
  "libc",
  "wasi 0.11.0+wasi-snapshot-preview1",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -1545,6 +1548,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e0242819d153cba4b4b05a5a8f2a7e9bbf97b6055b2a002b395c96b5ff3c0222"
 dependencies = [
  "cfg-if",
+ "js-sys",
+ "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]
@@ -1659,6 +1665,8 @@ dependencies = [
  "egui_plot",
  "json5",
  "serde",
+ "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]
