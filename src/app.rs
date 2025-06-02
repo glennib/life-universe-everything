@@ -4,6 +4,7 @@ use eframe::egui::Button;
 use eframe::egui::Color32;
 use eframe::egui::Context;
 use eframe::egui::Grid;
+use eframe::egui::Hyperlink;
 use eframe::egui::SliderClamping;
 use egui_plot::Bar;
 use egui_plot::BarChart;
@@ -120,9 +121,6 @@ impl eframe::App for MyApp {
 					.num_columns(2)
 					.striped(true)
 					.show(ui, |ui| {
-						ui.label("Initial population");
-						ui.label(format!("{}", self.solution.initial_population.count()));
-						ui.end_row();
 						ui.label("Final population");
 						ui.label(format!("{}", self.solution.final_population.count()));
 						ui.end_row();
@@ -131,6 +129,13 @@ impl eframe::App for MyApp {
 						ui.end_row();
 					});
 			});
+		});
+
+		egui::TopBottomPanel::bottom("bottom").show(ctx, |ui| {
+			ui.add(
+				Hyperlink::new("https://github.com/glennib/life-universe-everything")
+					.open_in_new_tab(true),
+			);
 		});
 
 		egui::CentralPanel::default().show(ctx, |ui| {
@@ -184,6 +189,7 @@ impl eframe::App for MyApp {
 						ui.bar_chart(BarChart::new("bc2", bars));
 					});
 			});
+			#[cfg(not(target_arch = "wasm32"))]
 			ui.group(|ui| {
 				ui.horizontal(|ui| {
 					ui.text_edit_singleline(&mut self.out_file);
