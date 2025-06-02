@@ -51,85 +51,89 @@ impl eframe::App for MyApp {
 		let prev_params = self.parameters;
 		egui::TopBottomPanel::top("top").show(ctx, |ui| {
 			ui.heading("Life, the Universe and Everything");
-			ui.group(|ui| {
-				let grid = Grid::new("grid_settings")
-					.num_columns(3)
-					.striped(true)
-					.show(ui, |ui| {
-						ui.add(
-							egui::Slider::new(
-								&mut self.parameters.initial_population,
-								10_u64.pow(3)..=10_u64.pow(13),
-							)
-							.logarithmic(true),
-						);
-						ui.label("initial population");
-						ui.end_row();
-						ui.horizontal(|ui| {
-							ui.add(
-								egui::Slider::new(&mut self.parameters.n_years, 0..=10_000)
-									.integer()
-									.clamping(SliderClamping::Edits),
-							);
-							if ui.button("-").clicked() {
-								self.parameters.n_years -= 1;
-							}
-							if ui.button("+").clicked() {
-								self.parameters.n_years += 1;
-							}
-						});
-						ui.label("years");
-						ui.end_row();
+			ui.horizontal(|ui| {
+				ui.vertical(|ui| {
+					ui.group(|ui| {
+						let grid = Grid::new("grid_settings")
+							.num_columns(3)
+							.striped(true)
+							.show(ui, |ui| {
+								ui.add(
+									egui::Slider::new(
+										&mut self.parameters.initial_population,
+										10_u64.pow(3)..=10_u64.pow(13),
+									)
+									.logarithmic(true),
+								);
+								ui.label("initial population");
+								ui.end_row();
+								ui.horizontal(|ui| {
+									ui.add(
+										egui::Slider::new(&mut self.parameters.n_years, 0..=10_000)
+											.integer()
+											.clamping(SliderClamping::Edits),
+									);
+									if ui.button("-").clicked() {
+										self.parameters.n_years -= 1;
+									}
+									if ui.button("+").clicked() {
+										self.parameters.n_years += 1;
+									}
+								});
+								ui.label("years");
+								ui.end_row();
 
-						ui.add(egui::Slider::new(
-							&mut self.parameters.males_per_100_females,
-							80..=120,
-						));
-						ui.label("males per 100 females");
-						ui.end_row();
+								ui.add(egui::Slider::new(
+									&mut self.parameters.males_per_100_females,
+									80..=120,
+								));
+								ui.label("males per 100 females");
+								ui.end_row();
 
-						ui.add(egui::Slider::new(
-							&mut self.parameters.infant_mortality_rate,
-							0.001..=0.020,
-						));
-						ui.label("infant mortality rate");
-						ui.end_row();
+								ui.add(egui::Slider::new(
+									&mut self.parameters.infant_mortality_rate,
+									0.001..=0.020,
+								));
+								ui.label("infant mortality rate");
+								ui.end_row();
 
-						ui.add(egui::Slider::new(
-							&mut self.parameters.target_total_fertility_rate,
-							0.0..=3.0,
-						));
-						ui.label("target fertility rate");
-						if ui.button("stabilize").clicked() {
-							let parameters = solve(self.parameters);
-							self.parameters = parameters;
+								ui.add(egui::Slider::new(
+									&mut self.parameters.target_total_fertility_rate,
+									0.0..=3.0,
+								));
+								ui.label("target fertility rate");
+								if ui.button("stabilize").clicked() {
+									let parameters = solve(self.parameters);
+									self.parameters = parameters;
+								}
+								ui.end_row();
+							});
+						if ui
+							.add_sized([grid.response.rect.width(), 0.0], Button::new("reset"))
+							.clicked()
+						{
+							self.parameters = self.original_parameters;
 						}
-						ui.end_row();
 					});
-				if ui
-					.add_sized([grid.response.rect.width(), 0.0], Button::new("reset"))
-					.clicked()
-				{
-					self.parameters = self.original_parameters;
+				});
+
+				if prev_params != self.parameters {
+					self.solution = self.parameters.run();
 				}
-			});
 
-			if prev_params != self.parameters {
-				self.solution = self.parameters.run();
-			}
-
-			ui.group(|ui| {
-				Grid::new("grid_summaries")
-					.num_columns(2)
-					.striped(true)
-					.show(ui, |ui| {
-						ui.label("Final population");
-						ui.label(format!("{}", self.solution.final_population.count()));
-						ui.end_row();
-						ui.label("Actual fertility");
-						ui.label(format!("{:.3}", self.solution.cohort_fertility.avg()));
-						ui.end_row();
-					});
+				ui.group(|ui| {
+					Grid::new("grid_summaries")
+						.num_columns(2)
+						.striped(true)
+						.show(ui, |ui| {
+							ui.label("Final population");
+							ui.label(format!("{}", self.solution.final_population.count()));
+							ui.end_row();
+							ui.label("Actual fertility");
+							ui.label(format!("{:.3}", self.solution.cohort_fertility.avg()));
+							ui.end_row();
+						});
+				});
 			});
 		});
 
@@ -143,7 +147,7 @@ impl eframe::App for MyApp {
 		egui::CentralPanel::default().show(ctx, |ui| {
 			ScrollArea::both()
 				.drag_to_scroll(true)
-				.scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
+				.scroll_bar_visibility(ScrollBarVisibility::VisibleWhenNeeded)
 				.show(ui, |ui| {
 					ui.group(|ui| {
 						ui.heading("Final age distribution");
