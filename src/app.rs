@@ -5,6 +5,7 @@ use eframe::egui::Color32;
 use eframe::egui::Context;
 use eframe::egui::Grid;
 use eframe::egui::Hyperlink;
+use eframe::egui::ScrollArea;
 use eframe::egui::SliderClamping;
 use egui_plot::Bar;
 use egui_plot::BarChart;
@@ -139,65 +140,67 @@ impl eframe::App for MyApp {
 		});
 
 		egui::CentralPanel::default().show(ctx, |ui| {
-			ui.group(|ui| {
-				ui.heading("Final age distribution");
-				Plot::new("final_age_distribution")
-					.show_grid([false, false])
-					.height(300.0)
-					.show(ui, |ui| {
-						let fp = &self.solution.final_population;
-						let max_age = fp
-							.males
-							.keys()
-							.chain(fp.females.keys())
-							.copied()
-							.max()
-							.unwrap();
-						let bars = (0..=max_age.0)
-							.map(Age)
-							.flat_map(|age| {
-								let m = fp.males[&age] as f64;
-								let f = fp.females[&age] as f64;
-								let age = age.0 as f64;
-								let male = Bar::new(age, m).fill(Color32::GREEN);
-								let female = Bar::new(age + 0.25, f).fill(Color32::RED);
-								[male, female]
-							})
-							.collect();
-						ui.bar_chart(BarChart::new("bc", bars).name("Age distribution"));
+			ScrollArea::both().show(ui, |ui| {
+				ui.group(|ui| {
+					ui.heading("Final age distribution");
+					Plot::new("final_age_distribution")
+						.show_grid([false, false])
+						.height(300.0)
+						.show(ui, |ui| {
+							let fp = &self.solution.final_population;
+							let max_age = fp
+								.males
+								.keys()
+								.chain(fp.females.keys())
+								.copied()
+								.max()
+								.unwrap();
+							let bars = (0..=max_age.0)
+								.map(Age)
+								.flat_map(|age| {
+									let m = fp.males[&age] as f64;
+									let f = fp.females[&age] as f64;
+									let age = age.0 as f64;
+									let male = Bar::new(age, m).fill(Color32::GREEN);
+									let female = Bar::new(age + 0.25, f).fill(Color32::RED);
+									[male, female]
+								})
+								.collect();
+							ui.bar_chart(BarChart::new("bc", bars).name("Age distribution"));
+						});
+				});
+				ui.group(|ui| {
+					ui.heading("Total population over time");
+					Plot::new("tl")
+						.show_grid([false, false])
+						.height(200.0)
+						.show(ui, |ui| {
+							let bars = self
+								.solution
+								.timeline
+								.iter_mf()
+								.flat_map(|(year, (m, f))| {
+									[
+										Bar::new(year.0 as f64, m as f64).fill(Color32::GREEN),
+										Bar::new(year.0 as f64, f as f64)
+											.fill(Color32::RED)
+											.base_offset(m as f64),
+									]
+								})
+								.collect();
+							ui.bar_chart(BarChart::new("bc2", bars));
+						});
+				});
+				#[cfg(not(target_arch = "wasm32"))]
+				ui.group(|ui| {
+					ui.horizontal(|ui| {
+						ui.text_edit_singleline(&mut self.out_file);
+						if ui.button("Save").clicked() {
+							let s = json5::to_string(&self.solution).unwrap();
+							std::fs::write(&self.out_file, &s).unwrap();
+							println!("Stored {} bytes to {}", s.len(), self.out_file);
+						}
 					});
-			});
-			ui.group(|ui| {
-				ui.heading("Total population over time");
-				Plot::new("tl")
-					.show_grid([false, false])
-					.height(200.0)
-					.show(ui, |ui| {
-						let bars = self
-							.solution
-							.timeline
-							.iter_mf()
-							.flat_map(|(year, (m, f))| {
-								[
-									Bar::new(year.0 as f64, m as f64).fill(Color32::GREEN),
-									Bar::new(year.0 as f64, f as f64)
-										.fill(Color32::RED)
-										.base_offset(m as f64),
-								]
-							})
-							.collect();
-						ui.bar_chart(BarChart::new("bc2", bars));
-					});
-			});
-			#[cfg(not(target_arch = "wasm32"))]
-			ui.group(|ui| {
-				ui.horizontal(|ui| {
-					ui.text_edit_singleline(&mut self.out_file);
-					if ui.button("Save").clicked() {
-						let s = json5::to_string(&self.solution).unwrap();
-						std::fs::write(&self.out_file, &s).unwrap();
-						println!("Stored {} bytes to {}", s.len(), self.out_file);
-					}
 				});
 			});
 		});
