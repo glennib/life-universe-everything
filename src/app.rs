@@ -13,7 +13,6 @@ use eframe::egui::scroll_area::ScrollBarVisibility;
 use egui_plot::Bar;
 use egui_plot::BarChart;
 use egui_plot::Plot;
-
 use life_universe_everything::optimizer::solve;
 use life_universe_everything::simulator::Age;
 use life_universe_everything::simulator::Parameters;
@@ -172,19 +171,12 @@ impl eframe::App for MyApp {
 							.height(300.0)
 							.show(ui, |ui| {
 								let fp = &self.solution.final_population;
-								let max_age = fp
-									.males
-									.keys()
-									.chain(fp.females.keys())
-									.copied()
-									.max()
-									.unwrap();
-								let bars = (0..=max_age.0)
-									.map(Age)
+								let max_age = (fp.males.len() - 1).max(fp.females.len() - 1);
+								let bars = (0..=max_age)
 									.flat_map(|age| {
-										let m = fp.males[&age] as f64;
-										let f = fp.females[&age] as f64;
-										let age = age.0 as f64;
+										let m = fp.males[age] as f64;
+										let f = fp.females[age] as f64;
+										let age = age as f64;
 										let male = Bar::new(age, m).fill(Color32::GREEN);
 										let female = Bar::new(age + 0.25, f).fill(Color32::RED);
 										[male, female]
