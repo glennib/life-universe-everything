@@ -14,10 +14,10 @@ use egui_plot::Bar;
 use egui_plot::BarChart;
 use egui_plot::Plot;
 
-use crate::optimizer::solve;
-use crate::simulator::Age;
-use crate::simulator::Parameters;
-use crate::simulator::SimulationResult;
+use life_universe_everything::optimizer::solve;
+use life_universe_everything::simulator::Age;
+use life_universe_everything::simulator::Parameters;
+use life_universe_everything::simulator::SimulationResult;
 
 pub struct MyApp {
 	parameters: Parameters,

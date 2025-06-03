@@ -1,8 +1,6 @@
 use app::MyApp;
 use eframe::egui;
 mod app;
-mod optimizer;
-mod simulator;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
