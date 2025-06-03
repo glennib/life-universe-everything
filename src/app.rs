@@ -1,10 +1,12 @@
 use eframe::Frame;
 use eframe::egui;
+use eframe::egui::Align;
 use eframe::egui::Button;
 use eframe::egui::Color32;
 use eframe::egui::Context;
 use eframe::egui::Grid;
 use eframe::egui::Hyperlink;
+use eframe::egui::Layout;
 use eframe::egui::ScrollArea;
 use eframe::egui::SliderClamping;
 use eframe::egui::scroll_area::ScrollBarVisibility;
@@ -51,90 +53,82 @@ impl eframe::App for MyApp {
 		let prev_params = self.parameters;
 		egui::TopBottomPanel::top("top").show(ctx, |ui| {
 			ui.heading("Life, the Universe and Everything");
-			ui.horizontal(|ui| {
-				ui.vertical(|ui| {
-					ui.group(|ui| {
-						let grid = Grid::new("grid_settings")
-							.num_columns(3)
-							.striped(true)
-							.show(ui, |ui| {
-								ui.add(
-									egui::Slider::new(
-										&mut self.parameters.initial_population,
-										10_u64.pow(3)..=10_u64.pow(13),
-									)
-									.logarithmic(true),
-								);
-								ui.label("initial population");
-								ui.end_row();
-								ui.horizontal(|ui| {
-									ui.add(
-										egui::Slider::new(&mut self.parameters.n_years, 0..=10_000)
-											.integer()
-											.clamping(SliderClamping::Edits),
-									);
-									if ui.button("-").clicked() {
-										self.parameters.n_years -= 1;
-									}
-									if ui.button("+").clicked() {
-										self.parameters.n_years += 1;
-									}
-								});
-								ui.label("years");
-								ui.end_row();
-
-								ui.add(egui::Slider::new(
-									&mut self.parameters.males_per_100_females,
-									80..=120,
-								));
-								ui.label("males per 100 females");
-								ui.end_row();
-
-								ui.add(egui::Slider::new(
-									&mut self.parameters.infant_mortality_rate,
-									0.001..=0.020,
-								));
-								ui.label("infant mortality rate");
-								ui.end_row();
-
-								ui.add(egui::Slider::new(
-									&mut self.parameters.target_total_fertility_rate,
-									0.0..=3.0,
-								));
-								ui.label("target fertility rate");
-								if ui.button("stabilize").clicked() {
-									let parameters = solve(self.parameters);
-									self.parameters = parameters;
-								}
-								ui.end_row();
-							});
-						if ui
-							.add_sized([grid.response.rect.width(), 0.0], Button::new("reset"))
-							.clicked()
-						{
-							self.parameters = self.original_parameters;
+			let grid = Grid::new("grid_settings")
+				.num_columns(2)
+				.striped(true)
+				.show(ui, |ui| {
+					ui.add(
+						egui::Slider::new(
+							&mut self.parameters.initial_population,
+							10_u64.pow(3)..=10_u64.pow(13),
+						)
+						.logarithmic(true),
+					);
+					ui.label("initial population");
+					ui.end_row();
+					ui.horizontal(|ui| {
+						ui.add(
+							egui::Slider::new(&mut self.parameters.n_years, 0..=10_000)
+								.integer()
+								.clamping(SliderClamping::Edits),
+						);
+						if ui.button("-").clicked() {
+							self.parameters.n_years -= 1;
+						}
+						if ui.button("+").clicked() {
+							self.parameters.n_years += 1;
 						}
 					});
-				});
+					ui.label("years");
+					ui.end_row();
 
-				if prev_params != self.parameters {
-					self.solution = self.parameters.run();
-				}
+					ui.add(egui::Slider::new(
+						&mut self.parameters.males_per_100_females,
+						80..=120,
+					));
+					ui.label("males per 100 females");
+					ui.end_row();
 
-				ui.group(|ui| {
-					Grid::new("grid_summaries")
-						.num_columns(2)
-						.striped(true)
-						.show(ui, |ui| {
-							ui.label("Final population");
-							ui.label(format!("{}", self.solution.final_population.count()));
-							ui.end_row();
-							ui.label("Actual fertility");
-							ui.label(format!("{:.3}", self.solution.cohort_fertility.avg()));
-							ui.end_row();
-						});
+					ui.add(egui::Slider::new(
+						&mut self.parameters.infant_mortality_rate,
+						0.001..=0.020,
+					));
+					ui.label("infant mortality rate");
+					ui.end_row();
+
+					ui.add(egui::Slider::new(
+						&mut self.parameters.target_total_fertility_rate,
+						0.0..=3.0,
+					));
+					ui.label("target fertility rate");
+					ui.end_row();
+					ui.label("");
+					if ui.button("stabilize").clicked() {
+						let parameters = solve(self.parameters);
+						self.parameters = parameters;
+					}
+					ui.end_row();
+					ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+						ui.label(format!("{}", self.solution.final_population.count()));
+					});
+					ui.label("final population");
+					ui.end_row();
+					ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+						ui.label(format!("{:.3}", self.solution.cohort_fertility.avg()));
+					});
+					ui.label("actual fertility");
+					ui.end_row();
 				});
-			});
+			if ui
+				.add_sized([grid.response.rect.width(), 0.0], Button::new("reset"))
+				.clicked()
+			{
+				self.parameters = self.original_parameters;
+			}
+
+			if prev_params != self.parameters {
+				self.solution = self.parameters.run();
+			}
 		});
 
 		egui::TopBottomPanel::bottom("bottom").show(ctx, |ui| {
@@ -149,6 +143,28 @@ impl eframe::App for MyApp {
 				.drag_to_scroll(true)
 				.scroll_bar_visibility(ScrollBarVisibility::VisibleWhenNeeded)
 				.show(ui, |ui| {
+					ui.group(|ui| {
+						ui.heading("Total population over time");
+						Plot::new("tl")
+							.show_grid([false, false])
+							.height(200.0)
+							.show(ui, |ui| {
+								let bars = self
+									.solution
+									.timeline
+									.iter_mf()
+									.flat_map(|(year, (m, f))| {
+										[
+											Bar::new(year.0 as f64, m as f64).fill(Color32::GREEN),
+											Bar::new(year.0 as f64, f as f64)
+												.fill(Color32::RED)
+												.base_offset(m as f64),
+										]
+									})
+									.collect();
+								ui.bar_chart(BarChart::new("bc2", bars));
+							});
+					});
 					ui.group(|ui| {
 						ui.heading("Final age distribution");
 						Plot::new("final_age_distribution")
@@ -175,28 +191,6 @@ impl eframe::App for MyApp {
 									})
 									.collect();
 								ui.bar_chart(BarChart::new("bc", bars).name("Age distribution"));
-							});
-					});
-					ui.group(|ui| {
-						ui.heading("Total population over time");
-						Plot::new("tl")
-							.show_grid([false, false])
-							.height(200.0)
-							.show(ui, |ui| {
-								let bars = self
-									.solution
-									.timeline
-									.iter_mf()
-									.flat_map(|(year, (m, f))| {
-										[
-											Bar::new(year.0 as f64, m as f64).fill(Color32::GREEN),
-											Bar::new(year.0 as f64, f as f64)
-												.fill(Color32::RED)
-												.base_offset(m as f64),
-										]
-									})
-									.collect();
-								ui.bar_chart(BarChart::new("bc2", bars));
 							});
 					});
 					#[cfg(not(target_arch = "wasm32"))]
