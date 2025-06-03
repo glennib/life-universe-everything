@@ -2,6 +2,8 @@
 
 Simple demographics simulator.
 
+See https://glennib.github.io/life-universe-everything/.
+
 ![screenshot of GUI](./.assets/screenshot.png)
 
 To build you need Rust/Cargo: https://rustup.rs/.
@@ -19,3 +21,5 @@ Deploy to Github Pages:
 ```shell
 trunk build --release --dist docs --public-url /life-universe-everything/
 ```
+
+Commit the `docs/` directory to deploy.
